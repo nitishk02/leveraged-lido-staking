@@ -12,9 +12,10 @@ contract LeveragedLidoVaultTest is Test {
     address aave = address(0x3);
     address lender = address(0x4);
     address borrower = address(0x5);
+    address uniswapRouter = address(0x6);
 
     function setUp() public {
-        vault = new LeveragedLidoVault(usdc, lido, aave);
+        vault = new LeveragedLidoVault(usdc, lido, aave, uniswapRouter);
     }
 
     function testDelegateBorrowingPower() public {

@@ -47,6 +47,8 @@ contract LeveragedLidoVault is ReentrancyGuard {
     address public immutable usdc;
     address public immutable lido;
     address public immutable aave;
+    address public immutable uniswapRouter;
+    
 
     uint256 public constant LIQUIDATION_THRESHOLD = 80; // 80%
     uint256 public constant LEVERAGE_FACTOR = 5; // 5x
@@ -71,10 +73,12 @@ contract LeveragedLidoVault is ReentrancyGuard {
     event Borrowed(address indexed borrower, uint256 amount, address lender);
     event StakedInLido(address indexed borrower, uint256 ethAmount);
 
-    constructor(address _usdc, address _lido, address _aave) {
+    constructor(address _usdc, address _lido, address _aave,  address _uniswapRouter) {
         usdc = _usdc;
         lido = _lido;
         aave = _aave;
+        uniswapRouter = _uniswapRouter;
+
     }
 
     // Allow lenders to delegate borrowing power
@@ -137,27 +141,21 @@ contract LeveragedLidoVault is ReentrancyGuard {
     }
 
 function swapUSDCtoETH(uint256 amount) internal returns (uint256) {
-    address uniswapRouter = 0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f; // Uniswap V2 Router
+        IERC20(usdc).approve(uniswapRouter, amount);
 
-    // Approve Uniswap to spend USDC
-    IERC20(usdc).approve(uniswapRouter, amount);
+        address[] memory path = new address[](2);
+        path[0] = usdc;
+        path[1] = IUniswapV2Router(uniswapRouter).WETH();
 
-    // Define the path for the swap: USDC -> WETH
-    address;
-    path[0] = usdc;
-    path[1] = IUniswapV2Router(uniswapRouter).WETH();
+        uint256[] memory amounts = IUniswapV2Router(uniswapRouter).swapExactTokensForETH(
+            amount,
+            0, // Accept any amount of ETH
+            path,
+            address(this),
+            block.timestamp + 300
+        );
 
-    // Perform the swap
-    uint256[] memory amounts = IUniswapV2Router(uniswapRouter).swapExactTokensForETH(
-        amount,                 // amountIn
-        0,                      // amountOutMin (set to 0 for simplicity, but better to calculate slippage)
-        path,                   // path
-        address(this),          // to: send ETH to the vault
-        block.timestamp + 300   // deadline: 5 minutes from now
-    );
-
-    // Return the amount of ETH received
-    return amounts[1];
-}
+        return amounts[1];
+    }
 
 }
